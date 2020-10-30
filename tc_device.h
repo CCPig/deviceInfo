@@ -46,11 +46,24 @@ namespace taf
 */
 
 	struct MAC_INFO {
-		std::string str_mac_;		//mac地址
-		std::string str_name_;		//mac名称
-		int dw_type_;				//mac类型，和PIP_ADAPTER_INFO结构体里的Type字段保持一致，例如MIB_IF_TYPE_ETHERNET=6，表示以太网网卡类型
-		std::string str_description_;//mac描述
+		std::string str_mac_ 	= "";		//mac地址
+		std::string str_name_ 	= "";		//mac名称
+		std::string str_ip_ 	="";		//ip名称
+		int dw_type_;						//mac类型，和PIP_ADAPTER_INFO结构体里的Type字段保持一致，例如MIB_IF_TYPE_ETHERNET=6，表示以太网网卡类型
+		std::string str_description_  = ""; //mac描述
 	};
+
+/*	inline std::ostream& operator<<(std::ostream &oss, const taf::MAC_INFO& value)
+	{
+		oss << "{str_name_:" << value.str_name_.c_str()
+			<< ",str_ip_:"   << value.str_ip_
+			<< ",str_mac_:"  << value.str_mac_
+			<< ",dw_type_:"  << value.dw_type_
+			<< ",str_description_:" << value.str_description_
+			<< "}";
+
+		return oss;
+	}*/
 
 
 class  TC_Device
@@ -61,34 +74,37 @@ public:
 	* @return string 返回局域网IP字符串
 	*/
 	static std::string getLIP();
-	static std::unordered_map<std::string, std::string> getLocalHosts();
+
 
 	/**
-	* @brief  获取当前激活的第一个有效MAC地址
-	* @return string 返回MAC地址字符串
+	* @brief  获取所有的局域网IP
+	* @return vector 返回所有的局域网IP数组
 	*/
-	static std::string getFirstActiveMAC();
+	static std::vector<std::string> getLocalHosts();
 
 	/**
-	* @brief  获取第一个能获取到的有效物理以太网MAC地址
-	* @return string 返回MAC地址字符串
+	* @brief  获取所有的网卡信息
+	* @return unordered_map 返回所有的网卡字典信息
 	*/
-	static std::string getFristEthernetMAC();
+	static std::unordered_map<std::string, taf::MAC_INFO> getAllNetCard();
 
 	/**
-	* @brief  获取所有MAC地址
-	* @param in_vecMac IN 返回的mac地址列表
-	* @return N/A
+	* @brief  获取所有物理网卡信息
+	* @return unordered_map  获取所有物理网卡信息
 	*/
-	static void getAllMAC(std::vector<taf::MAC_INFO> &in_vecMac);
+	static std::unordered_map<std::string, taf::MAC_INFO> getAllPhysicalNetCard();
 
 	/**
-	* @brief    获取所有物理MAC地址
-	* @param    in_vecMac IN 返回的mac地址列表
-	* @return   N/A
+	* @brief  获取当前激活的第一个有效网卡
+	* @return taf::MAC_INFO 返回MAC地址字符串
 	*/
-	static void getAllPhysicalMAC(std::vector<taf::MAC_INFO> &in_vecMac);
+	static taf::MAC_INFO getFirstActiveNetCard();
 
+	/**
+	* @brief  获取第一个能获取到的有效物理以太网网卡
+	* @return taf::MAC_INFO 返回MAC地址字符串
+	*/
+	static taf::MAC_INFO getFristEthernetNetCard();
 
 	/**
 	* @brief  获取系统硬盘序列号HD
@@ -96,7 +112,6 @@ public:
 	*/
 	static std::string getHD();
 
-	//TODO
     /**
     * @brief  获取硬盘分区信息
     * @return string 返回硬盘分区信息字符串
@@ -140,6 +155,9 @@ public:
 	* @return string 返回系统卷盘标号VOL字符串
 	*/
 	static std::string getVOL();
+
+	static std::string getVendor();
+	static std::string getModel();
 
 
 	/**

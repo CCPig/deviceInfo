@@ -1,8 +1,8 @@
-﻿#include 	"tc_device.h"
-#include 	<stdio.h>
-#include 	<iostream>
+﻿#include    "tc_device.h"
+#include    <stdio.h>
+#include    <iostream>
 
-#if 		defined(_WIN64)
+#if        defined(_WIN64)
 #include 	<locale>
 #include 	<codecvt>
 #include 	<intrin.h>
@@ -24,16 +24,17 @@
 
 #else
 
-#include 	<unistd.h>         /* gethostname */
-#include 	"util/tc_split.h"
-#include 	<cstring>
-#include 	<stdexcept>
-#include 	<arpa/inet.h>
+#include    <unistd.h>         /* gethostname */
+#include    "util/tc_split.h"
+#include    "util/tc_common.h"
+#include    <cstring>
+#include    <stdexcept>
+#include    <arpa/inet.h>
 #include    <limits>
-#include 	<tuple>
-#include 	<algorithm>
-#include 	<sys/types.h>
-#include 	<sys/socket.h>
+#include    <tuple>
+#include    <algorithm>
+#include    <sys/types.h>
+#include    <sys/socket.h>
 #include    <sys/socket.h>
 #include    <netinet/in.h>
 #include    <arpa/inet.h>
@@ -157,7 +158,7 @@ static bool get_cpuId(std::string& cpu_id)
 	return (true);
 }
 
-char * getName(char *name, char *p)
+char* getName(char* name, char* p)
 {
 	while (isspace(*p))
 		p++;
@@ -167,7 +168,7 @@ char * getName(char *name, char *p)
 			break;
 		if (*p == ':')
 		{    /* could be an alias */
-			char *dot = p, *dotname = name;
+			char* dot = p, * dotname = name;
 			*name++ = *p++;
 			while (isdigit(*p))
 				*name++ = *p++;
@@ -187,15 +188,14 @@ char * getName(char *name, char *p)
 	return p;
 }
 
-
-std::string getIpFromEthx(const std::string & interface, std::string &macaddr)
+std::string getIpFromEthx(const std::string& interface, std::string& macaddr)
 {
 	if (interface.size() == 0)
 	{
 		throw std::logic_error("input the eroor interface");
 	}
 
-	struct sockaddr_in *addr;
+	struct sockaddr_in* addr;
 	struct ifreq ifr;
 	int sockfd;
 
@@ -205,31 +205,53 @@ std::string getIpFromEthx(const std::string & interface, std::string &macaddr)
 	{
 		return std::numeric_limits<std::string>::quiet_NaN();
 	}
-	addr = (struct sockaddr_in *) &(ifr.ifr_addr);
+	addr = (struct sockaddr_in*)&(ifr.ifr_addr);
 	std::string ip(inet_ntoa(addr->sin_addr));
-
 
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1)
 	{
 		return std::numeric_limits<std::string>::quiet_NaN();
 	}
-	unsigned char * mac;
-	mac = (unsigned char *) (ifr.ifr_hwaddr.sa_data);
+	unsigned char* mac;
+	mac = (unsigned char*)(ifr.ifr_hwaddr.sa_data);
 	char mac_addr[32] = {};
-	sprintf(mac_addr, "%2.2x:%2.2x:%2.2x:%2.2x:%2.2x:%2.2x\0", mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+	sprintf(mac_addr, "%2.2x:%2.2x:%2.2x:%2.2x:%2.2x:%2.2x\0", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	macaddr.assign(mac_addr);
 	return ip;
 }
 
 #endif
 
-std::unordered_map<std::string, std::string> TC_Device::getLocalHosts()
+std::vector<std::string> TC_Device::getLocalHosts()
 {
-	static std::unordered_map<std::string, std::string> ip_mac;
-	if (!ip_mac.empty())
+	static std::vector<std::string> hosts;
+	if (!hosts.empty())
 	{
-		return ip_mac;
+		return hosts;
 	}
+
+	auto net_cards = getAllNetCard();
+	if (net_cards.empty())
+	{
+		return hosts;
+	}
+
+	for (auto& item : net_cards)
+	{
+		hosts.push_back(item.second.str_ip_);
+	}
+	return hosts;
+}
+
+std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllNetCard()
+{
+	static std::unordered_map<std::string, taf::MAC_INFO> interface_ip_mac;
+	if (!interface_ip_mac.empty())
+	{
+		return interface_ip_mac;
+	}
+
+	//TODO windows
 #if defined(_WIN64) || defined(_WIN32)
 	WORD wVersionRequested = MAKEWORD(2, 2);
 
@@ -255,43 +277,46 @@ std::unordered_map<std::string, std::string> TC_Device::getLocalHosts()
 	else
 	{
 		// unsupport AF_INET6  ...
-		return hosts;
+		return ip_mac;
 	}
 	WSACleanup();
-	return hosts;
+	return ip_mac;
 #else
-	FILE *fh;
-    char buf[512] = {0};
-    fh = fopen("/proc/net/dev", "r");
-    if (!fh)
-    {
-    	throw std::logic_error("get localhosts failed");
-    }
+	FILE* fh;
+	char buf[512] = { 0 };
+	fh = fopen("/proc/net/dev", "r");
+	if (!fh)
+	{
+		throw std::logic_error("get localhosts failed");
+	}
 
-    /* eat title lines */
-    fgets(buf, sizeof buf, fh);
-    fgets(buf, sizeof buf, fh);
-    int icnt = 1;
-    std::unordered_map<std::string, std::string> ip_mac;
-    while (fgets(buf, sizeof buf, fh))
-    {
-        char name[IFNAMSIZ] = {0};
-        getName(name, buf);
-        std::string interface(name);
-        if (interface == "lo")
-        {
-            continue;
-        }
-        std::string macaddr;
-		auto ip = getIpFromEthx(interface, macaddr);
-        if(ip == std::numeric_limits<std::string>::quiet_NaN())
+	/* eat title lines */
+	fgets(buf, sizeof buf, fh);
+	fgets(buf, sizeof buf, fh);
+	int icnt = 1;
+	while (fgets(buf, sizeof buf, fh))
+	{
+		char name[IFNAMSIZ] = { 0 };
+		getName(name, buf);
+		std::string interface(name);
+		if (interface == "lo")
 		{
 			continue;
 		}
-        ip_mac.insert(std::make_pair(ip, macaddr));
-    }
-    fclose(fh);
-    return ip_mac;
+		std::string macaddr;
+		auto ip = getIpFromEthx(interface, macaddr);
+		if (ip == std::numeric_limits<std::string>::quiet_NaN())
+		{
+			continue;
+		}
+		taf::MAC_INFO info;
+		info.str_ip_ = ip;
+		info.str_mac_ = macaddr;
+		info.str_name_ = interface;
+		interface_ip_mac.insert(std::make_pair(interface, info));
+	}
+	fclose(fh);
+	return interface_ip_mac;
 #endif
 }
 
@@ -322,28 +347,62 @@ std::string TC_Device::getLIP()
 
 	WSACleanup();
 	return localIP;
+#elif defined(__linux)
+	auto net_card = getAllPhysicalNetCard();
+	if (!net_card.empty())
+	{
+		return net_card.begin()->second.str_ip_;
+	}
+	return "";
 #else
 	throw std::logic_error("not complete");
 #endif
 }
 
-std::string TC_Device::getFirstActiveMAC()
+taf::MAC_INFO TC_Device::getFirstActiveNetCard()
 {
 #if defined(_WIN64) || defined(_WIN32)
-	static std::string strActiveMac;
+/*	static std::string strActiveMac;
 	if (!strActiveMac.empty())
 	{
 		return strActiveMac;
 	}
 	MasterHardDiskSerial mhds;
 	mhds.getFirstActiveMAC(strActiveMac);
-	return strActiveMac;
+	return strActiveMac;*/
+#elif  defined(__linux)
+	char buf_ps[128];
+	std::string cmd = "ip a | grep \"state UP\" |sed -n \"1p\" | awk -F ':' '{print $2}' | sed 's/ //g'";
+	FILE* ptr = NULL;
+
+	if (( ptr = popen(cmd.c_str(), "r")) != NULL)
+	{
+		if (fgets(buf_ps,128, ptr) == NULL)
+		{
+			std::logic_error("get all active net card failed!!!");
+		}
+		pclose(ptr);
+		ptr = NULL;
+	}
+	auto interface_ip_mac = getLocalHosts();
+	std::string info(buf_ps);
+	std::string name = info.substr(0, info.length() - 1);
+	auto tmp = getAllNetCard();
+	if(tmp.find(name) != tmp.end())
+	{
+		return tmp.at(name);
+	}
+	else
+	{
+		return taf::MAC_INFO();
+	}
+
 #else
-	throw std::logic_error("not complete");
+throw std::logic_error("not complete");
 #endif
 }
 
-std::string TC_Device::getFristEthernetMAC()
+taf::MAC_INFO TC_Device::getFristEthernetNetCard()
 {
 #if defined(_WIN64) || defined(_WIN32)
 	static std::string strFristEthernetMac;
@@ -354,42 +413,76 @@ std::string TC_Device::getFristEthernetMAC()
 	MasterHardDiskSerial mhds;
 	mhds.getFristEthernetMac(strFristEthernetMac);
 	return strFristEthernetMac;
+#elif defined(__linux)
+	auto net_cards = getAllPhysicalNetCard();
+	if(!net_cards.empty())
+	{
+		return net_cards.begin()->second;
+	}
+	else
+	{
+		return taf::MAC_INFO();
+	}
 #else
 	throw std::logic_error("not complete");
 #endif
 }
 
-void TC_Device::getAllMAC(std::vector<taf::MAC_INFO>& in_vecMac)
+std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllPhysicalNetCard()
 {
-#if defined(_WIN64) || defined(_WIN32)
-	in_vecMac.clear();
-	static std::vector<MAC_INFO> s_vecMac;
-	if (s_vecMac.size() > 0)
+	static std::unordered_map<std::string, taf::MAC_INFO> net_card;
+	if (!net_card.empty())
 	{
-		in_vecMac.assign(s_vecMac.begin(), s_vecMac.end());
-		return;
+		return net_card;
 	}
-	MasterHardDiskSerial mhds;
-	mhds.getAllMAC(s_vecMac);
-	in_vecMac.assign(s_vecMac.begin(), s_vecMac.end());
-#else
-	throw std::logic_error("not complete");
-#endif
-}
 
-void TC_Device::getAllPhysicalMAC(std::vector<taf::MAC_INFO>& in_vecMac)
-{
 #if defined(_WIN64) || defined(_WIN32)
-	in_vecMac.clear();
-	static std::vector<MAC_INFO> s_vecMac;
-	if (s_vecMac.size() > 0)
+	/*	in_vecMac.clear();
+		static std::vector<MAC_INFO> s_vecMac;
+		if (s_vecMac.size() > 0)
+		{
+			in_vecMac.assign(s_vecMac.begin(), s_vecMac.end());
+			return;
+		}
+		MasterHardDiskSerial mhds;
+		mhds.getAllPhysicalMAC(s_vecMac);
+		in_vecMac.assign(s_vecMac.begin(), s_vecMac.end());*/
+#elif defined(__linux)
+
+	char buf_ps[128];
+	std::string cmd = "ls /sys/class/net/ |grep -v \"`ls /sys/devices/virtual/net/`\"";
+	FILE* ptr = NULL;
+	if ((ptr = popen(cmd.c_str(), "r")) != NULL)
 	{
-		in_vecMac.assign(s_vecMac.begin(), s_vecMac.end());
-		return;
+		if (fgets(buf_ps, 128, ptr) == NULL)
+		{
+			std::logic_error("get all physical mac failed!!!");
+		}
+		pclose(ptr);
+		ptr = NULL;
 	}
-	MasterHardDiskSerial mhds;
-	mhds.getAllPhysicalMAC(s_vecMac);
-	in_vecMac.assign(s_vecMac.begin(), s_vecMac.end());
+	auto interface_ip_mac = getLocalHosts();
+
+	//获取到的字符串中换行符需要进行处理
+	std::string info(buf_ps);
+	auto interfaces = taf::TC_Common::sepstr<std::string>(info.substr(0,info.length() - 1), " ");
+	interfaces.erase(std::remove(interfaces.begin(), interfaces.end(), "lo"), interfaces.end());
+	auto tmp = getAllNetCard();
+	for (auto& name : interfaces)
+	{
+		auto iter = tmp.find(name);
+		if (iter != tmp.end())
+		{
+
+			net_card.insert(std::make_pair(name, iter->second));
+		}
+		else
+		{
+			continue;
+		}
+	}
+	return net_card;
+
 #else
 	throw std::logic_error("not complete");
 #endif
@@ -407,7 +500,9 @@ std::string TC_Device::getHD()
 	mhds.getSerialNo(strSystemSerialNo);
 	return strSystemSerialNo;
 #else
-	throw std::logic_error("not complete");
+	//暂时无法获取到硬盘的序列号
+	return "";
+//	throw std::logic_error("not complete");
 #endif
 }
 
@@ -454,7 +549,6 @@ std::string TC_Device::getCPU()
 	throw std::logic_error("not complete");
 #endif
 }
-
 
 #if !defined(_WIN64) && !defined(_WIN32)
 
@@ -628,6 +722,7 @@ std::string TC_Device::getIMEI()
 	mhds.getSerialNo(strSystemSerialNo);
 	return strSystemSerialNo;
 #else
+	return getHD();
 	throw std::logic_error("not complete");
 #endif
 }
@@ -645,6 +740,7 @@ std::string TC_Device::getVOL()
 	str_vol = szTmp[0];
 	return str_vol;
 #else
+	//暂时不支持
 	return "";
 #endif
 }
@@ -838,4 +934,56 @@ int TC_Device::WmiQuery(const std::string& key, std::string& val)
 
 }
 
+
+std::string TC_Device::getVendor()
+{
+#if defined(_WIN64) || defined(_WIN32)
+	std::string manufacturer;
+	TC_Device::WmiQuery("Manufacturer", manufacturer);
+	return manufacturer;
+#elif defined(__linux)
+	char buf_ps[128];
+	std::string cmd = "cat /sys/class/dmi/id/board_vendor";
+	FILE* ptr = NULL;
+	if ((ptr = popen(cmd.c_str(), "r")) != NULL)
+	{
+		if (fgets(buf_ps, 128, ptr) == NULL)
+		{
+			std::logic_error("get product vendor info failed!!!");
+		}
+		pclose(ptr);
+		ptr = NULL;
+	}
+	std::string info(buf_ps);
+	return info.substr(0, info.length() - 1);
+#else
+	throw std::logic_error("not complete");
+#endif
+}
+
+std::string TC_Device::getModel()
+{
+#if defined(_WIN64) || defined(_WIN32)
+	std::string model;
+	TC_Device::WmiQuery("Model", model);
+	return manufacturer;
+#elif defined(__linux)
+	char buf_ps[128];
+	std::string cmd = "cat /sys/class/dmi/id/board_name";
+	FILE* ptr = NULL;
+	if ((ptr = popen(cmd.c_str(), "r")) != NULL)
+	{
+		if (fgets(buf_ps, 128, ptr) == NULL)
+		{
+			std::logic_error("get product model info failed!!!");
+		}
+		pclose(ptr);
+		ptr = NULL;
+	}
+	std::string info(buf_ps);
+	return info.substr(0, info.length() - 1);
+#else
+	throw std::logic_error("not complete");
+#endif
+}
 }
