@@ -89,7 +89,8 @@ int main(int argc, char** argv)
 	{
 		// 硬盘序列
 		auto hd = TC_Device::getHD();
-		std::cout << "hd:" << hd << std::endl;
+		std::cout << "hd.model:" << get<0>(hd) << std::endl;
+		std::cout << "hd.serial_no:" << get<1>(hd) << std::endl;
 	}
 
 	{

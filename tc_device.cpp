@@ -24,25 +24,27 @@
 
 #else
 
-#include    <unistd.h>         /* gethostname */
 #include    "util/tc_split.h"
 #include    "util/tc_common.h"
 #include    <cstring>
 #include    <stdexcept>
-#include    <arpa/inet.h>
 #include    <limits>
+#include    <unistd.h>         /* gethostname */
 #include    <tuple>
 #include    <algorithm>
+#include 	<unistd.h>
+#include 	<fcntl.h>
+#include 	<linux/hdreg.h>
+#include 	<sys/ioctl.h>
 #include    <sys/types.h>
 #include    <sys/socket.h>
-#include    <sys/socket.h>
+#include    <sys/sysctl.h>
+#include    <sys/ioctl.h>
 #include    <netinet/in.h>
 #include    <arpa/inet.h>
-#include    <sys/ioctl.h>
 #include    <net/if.h>
-#include    <netinet/ip.h>
 #include    <net/if_arp.h>
-#include    <sys/sysctl.h>
+#include    <netinet/ip.h>
 #endif
 
 namespace taf
@@ -257,7 +259,7 @@ std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllNetCard()
 
 	WSADATA wsaData;
 	if (WSAStartup(wVersionRequested, &wsaData) != 0)
-		return ip_mac;
+		return interface_ip_mac;
 
 	char local[255] = { 0 };
 	gethostname(local, sizeof(local));
@@ -488,7 +490,7 @@ std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllPhysicalNetCard(
 #endif
 }
 
-std::string TC_Device::getHD()
+std::tuple<std::string, std::string> TC_Device::getHD()
 {
 #if defined(_WIN64) || defined(_WIN32)
 	static std::string strSystemSerialNo;
@@ -499,9 +501,62 @@ std::string TC_Device::getHD()
 	MasterHardDiskSerial mhds;
 	mhds.getSerialNo(strSystemSerialNo);
 	return strSystemSerialNo;
+#elif defined(__linux)
+	char buf_ps[128];
+	std::string cmd = "df -Tlh |sed -n \"2p\" |awk -F ' ' '{printf(\"%s,%s,%s\",$1,$2,$3)}'";
+	FILE* ptr = NULL;
+	if ((ptr = popen(cmd.c_str(), "r")) != NULL)
+	{
+		if (fgets(buf_ps, 128, ptr) == NULL)
+		{
+			std::logic_error("get Unix OS PI!!!");
+		}
+		pclose(ptr);
+		ptr = NULL;
+	}
+	std::string info(buf_ps);
+	auto PI = taf::TC_Common::sepstr<string>(info,",");
+
+	static int open_flags = O_RDONLY|O_NONBLOCK;
+	static struct hd_driveid id;
+
+	if(PI.empty())
+	{
+		throw std::logic_error("get HD failed");
+	}
+
+	int fd = open(PI.front().c_str(),open_flags);
+	if(fd < 0)
+	{
+		throw std::logic_error( "open the dev file failed, please checkout the existence of " + PI.front() + ", if exist, try use root right to excute!!!");
+	}
+
+	ioctl(fd,HDIO_GET_IDENTITY,&id);
+	std::string model;
+	std::string serial_id;
+	//长度是固定的不要随意修改
+	for(int i =0; i < 40; i++)
+	{
+		char a = id.model[i];
+		if(a == ' ')
+		{
+			continue;
+		}
+		model += a;
+	}
+
+	for(int i = 0; i < 20; i++)
+	{
+		char a = id.serial_no[i];
+		if(a == ' ')
+		{
+			continue;
+		}
+		serial_id += a;
+	}
+
+	return std::make_tuple(model, serial_id);
 #else
-	//暂时无法获取到硬盘的序列号
-	return "";
 //	throw std::logic_error("not complete");
 #endif
 }
@@ -722,7 +777,7 @@ std::string TC_Device::getIMEI()
 	mhds.getSerialNo(strSystemSerialNo);
 	return strSystemSerialNo;
 #else
-	return getHD();
+	return get<1>(getHD());
 	throw std::logic_error("not complete");
 #endif
 }

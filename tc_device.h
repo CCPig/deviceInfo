@@ -107,10 +107,10 @@ public:
 	static taf::MAC_INFO getFristEthernetNetCard();
 
 	/**
-	* @brief  获取系统硬盘序列号HD
-	* @return string 返回系统硬盘序列号HD字符串
+	* @brief  获取系统硬盘型号和序列号
+	* @return tuple 返回系统硬盘型号和序列号元组
 	*/
-	static std::string getHD();
+	static std::tuple<std::string, std::string> getHD();
 
     /**
     * @brief  获取硬盘分区信息
