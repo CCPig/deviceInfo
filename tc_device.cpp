@@ -32,10 +32,10 @@
 #include    <unistd.h>         /* gethostname */
 #include    <tuple>
 #include    <algorithm>
-#include 	<unistd.h>
-#include 	<fcntl.h>
-#include 	<linux/hdreg.h>
-#include 	<sys/ioctl.h>
+#include    <unistd.h>
+#include    <fcntl.h>
+#include    <linux/hdreg.h>
+#include    <sys/ioctl.h>
 #include    <sys/types.h>
 #include    <sys/socket.h>
 #include    <sys/sysctl.h>
@@ -364,22 +364,22 @@ std::string TC_Device::getLIP()
 taf::MAC_INFO TC_Device::getFirstActiveNetCard()
 {
 #if defined(_WIN64) || defined(_WIN32)
-/*	static std::string strActiveMac;
-	if (!strActiveMac.empty())
-	{
-		return strActiveMac;
-	}
-	MasterHardDiskSerial mhds;
-	mhds.getFirstActiveMAC(strActiveMac);
-	return strActiveMac;*/
+	/*	static std::string strActiveMac;
+		if (!strActiveMac.empty())
+		{
+			return strActiveMac;
+		}
+		MasterHardDiskSerial mhds;
+		mhds.getFirstActiveMAC(strActiveMac);
+		return strActiveMac;*/
 #elif  defined(__linux)
 	char buf_ps[128];
 	std::string cmd = "ip a | grep \"state UP\" |sed -n \"1p\" | awk -F ':' '{print $2}' | sed 's/ //g'";
 	FILE* ptr = NULL;
 
-	if (( ptr = popen(cmd.c_str(), "r")) != NULL)
+	if ((ptr = popen(cmd.c_str(), "r")) != NULL)
 	{
-		if (fgets(buf_ps,128, ptr) == NULL)
+		if (fgets(buf_ps, 128, ptr) == NULL)
 		{
 			std::logic_error("get all active net card failed!!!");
 		}
@@ -390,7 +390,7 @@ taf::MAC_INFO TC_Device::getFirstActiveNetCard()
 	std::string info(buf_ps);
 	std::string name = info.substr(0, info.length() - 1);
 	auto tmp = getAllNetCard();
-	if(tmp.find(name) != tmp.end())
+	if (tmp.find(name) != tmp.end())
 	{
 		return tmp.at(name);
 	}
@@ -400,7 +400,7 @@ taf::MAC_INFO TC_Device::getFirstActiveNetCard()
 	}
 
 #else
-throw std::logic_error("not complete");
+	throw std::logic_error("not complete");
 #endif
 }
 
@@ -417,7 +417,7 @@ taf::MAC_INFO TC_Device::getFristEthernetNetCard()
 	return strFristEthernetMac;
 #elif defined(__linux)
 	auto net_cards = getAllPhysicalNetCard();
-	if(!net_cards.empty())
+	if (!net_cards.empty())
 	{
 		return net_cards.begin()->second;
 	}
@@ -467,7 +467,7 @@ std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllPhysicalNetCard(
 
 	//获取到的字符串中换行符需要进行处理
 	std::string info(buf_ps);
-	auto interfaces = taf::TC_Common::sepstr<std::string>(info.substr(0,info.length() - 1), " ");
+	auto interfaces = taf::TC_Common::sepstr<std::string>(info.substr(0, info.length() - 1), " ");
 	interfaces.erase(std::remove(interfaces.begin(), interfaces.end(), "lo"), interfaces.end());
 	auto tmp = getAllNetCard();
 	for (auto& name : interfaces)
@@ -515,40 +515,40 @@ std::tuple<std::string, std::string> TC_Device::getHD()
 		ptr = NULL;
 	}
 	std::string info(buf_ps);
-	auto PI = taf::TC_Common::sepstr<string>(info,",");
+	auto PI = taf::TC_Common::sepstr<string>(info, ",");
 
-	static int open_flags = O_RDONLY|O_NONBLOCK;
+	static int open_flags = O_RDONLY | O_NONBLOCK;
 	static struct hd_driveid id;
 
-	if(PI.empty())
+	if (PI.empty())
 	{
 		throw std::logic_error("get HD failed");
 	}
 
-	int fd = open(PI.front().c_str(),open_flags);
-	if(fd < 0)
+	int fd = open(PI.front().c_str(), open_flags);
+	if (fd < 0)
 	{
-		throw std::logic_error( "open the dev file failed, please checkout the existence of " + PI.front() + ", if exist, try use root right to excute!!!");
+		throw std::logic_error("open the dev file failed, please checkout the existence of " + PI.front() + ", if exist, try use root right to excute!!!");
 	}
 
-	ioctl(fd,HDIO_GET_IDENTITY,&id);
+	ioctl(fd, HDIO_GET_IDENTITY, &id);
 	std::string model;
 	std::string serial_id;
 	//长度是固定的不要随意修改
-	for(int i =0; i < 40; i++)
+	for (int i = 0; i < 40; i++)
 	{
 		char a = id.model[i];
-		if(a == ' ')
+		if (a == ' ')
 		{
 			continue;
 		}
 		model += a;
 	}
 
-	for(int i = 0; i < 20; i++)
+	for (int i = 0; i < 20; i++)
 	{
 		char a = id.serial_no[i];
-		if(a == ' ')
+		if (a == ' ')
 		{
 			continue;
 		}
@@ -557,7 +557,7 @@ std::tuple<std::string, std::string> TC_Device::getHD()
 
 	return std::make_tuple(model, serial_id);
 #else
-//	throw std::logic_error("not complete");
+	//	throw std::logic_error("not complete");
 #endif
 }
 
@@ -988,7 +988,6 @@ int TC_Device::WmiQuery(const std::string& key, std::string& val)
 #endif
 
 }
-
 
 std::string TC_Device::getVendor()
 {
