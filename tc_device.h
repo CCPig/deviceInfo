@@ -4,13 +4,24 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-
+#include "util/tc_ex.h"
+#include "util/tc_platform.h"
 
 
 //using namespace std;
 
 namespace taf
 {
+
+
+struct TC_Device_Exception : public TC_Exception
+{
+	TC_Device_Exception(const std::string &buffer) : TC_Exception(buffer){};
+	TC_Device_Exception(const std::string &buffer, int err) : TC_Exception(buffer, err){};
+	~TC_Device_Exception() throw(){};
+};
+
+
 /////////////////////////////////////////////////
 /**
 * @file dev_info_get.h
@@ -53,18 +64,6 @@ namespace taf
 		std::string str_description_  = ""; //mac描述
 	};
 
-/*	inline std::ostream& operator<<(std::ostream &oss, const taf::MAC_INFO& value)
-	{
-		oss << "{str_name_:" << value.str_name_.c_str()
-			<< ",str_ip_:"   << value.str_ip_
-			<< ",str_mac_:"  << value.str_mac_
-			<< ",dw_type_:"  << value.dw_type_
-			<< ",str_description_:" << value.str_description_
-			<< "}";
-
-		return oss;
-	}*/
-
 
 class  TC_Device
 {
@@ -74,7 +73,6 @@ public:
 	* @return string 返回局域网IP字符串
 	*/
 	static std::string getLIP();
-
 
 	/**
 	* @brief  获取所有的局域网IP
@@ -90,7 +88,7 @@ public:
 
 	/**
 	* @brief  获取所有物理网卡信息
-	* @return unordered_map  获取所有物理网卡信息
+	* @return unordered_map<网卡名， 网卡信息>  获取所有物理网卡信息
 	*/
 	static std::unordered_map<std::string, taf::MAC_INFO> getAllPhysicalNetCard();
 
@@ -124,7 +122,7 @@ public:
     */
 	static std::string getCPU();
 
-#if !defined(WIN64) && !defined(WIN32)
+#if (TARGET_PLATFORM_IOS || TARGET_PLATFORM_LINUX)
 	/**
 	* @brief  获取UNIX终端系统和版本信息
 	* @return std::tuple 0:系统，1：版本

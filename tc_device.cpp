@@ -2,7 +2,7 @@
 #include    <stdio.h>
 #include    <iostream>
 
-#if        defined(_WIN64)
+#if         TARGET_PLATFORM_WINDOWS
 #include 	<locale>
 #include 	<codecvt>
 #include 	<intrin.h>
@@ -13,10 +13,8 @@
 #pragma 	comment(lib, "ws2_32.lib")
 #include 	"HardDriveSerialNumer.h"
 
-#if 		defined(_WIN32)
 #include 	<Windows.h>
 #include 	<WinBase.h>
-#endif
 
 #include 	<comdef.h>
 #include 	<Wbemidl.h>
@@ -50,7 +48,7 @@
 namespace taf
 {
 
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 std::wstring utf8_to_wstring(const std::string& str)
 {
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t> > strCnv;
@@ -131,7 +129,7 @@ void get_cpuId(std::string& str_cpu)
 	str_cpu = pCpuId;
 }
 
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 
 static bool get_cpuId(std::string& cpu_id)
 {
@@ -253,8 +251,7 @@ std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllNetCard()
 		return interface_ip_mac;
 	}
 
-	//TODO windows
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	WORD wVersionRequested = MAKEWORD(2, 2);
 
 	WSADATA wsaData;
@@ -324,7 +321,7 @@ std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllNetCard()
 
 std::string TC_Device::getLIP()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	static std::string localIP;
 	if (!localIP.empty())
 	{
@@ -349,7 +346,7 @@ std::string TC_Device::getLIP()
 
 	WSACleanup();
 	return localIP;
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 	auto net_card = getAllPhysicalNetCard();
 	if (!net_card.empty())
 	{
@@ -363,7 +360,7 @@ std::string TC_Device::getLIP()
 
 taf::MAC_INFO TC_Device::getFirstActiveNetCard()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	/*	static std::string strActiveMac;
 		if (!strActiveMac.empty())
 		{
@@ -372,7 +369,7 @@ taf::MAC_INFO TC_Device::getFirstActiveNetCard()
 		MasterHardDiskSerial mhds;
 		mhds.getFirstActiveMAC(strActiveMac);
 		return strActiveMac;*/
-#elif  defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 	char buf_ps[128];
 	std::string cmd = "ip a | grep \"state UP\" |sed -n \"1p\" | awk -F ':' '{print $2}' | sed 's/ //g'";
 	FILE* ptr = NULL;
@@ -406,7 +403,7 @@ taf::MAC_INFO TC_Device::getFirstActiveNetCard()
 
 taf::MAC_INFO TC_Device::getFristEthernetNetCard()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	static std::string strFristEthernetMac;
 	if (!strFristEthernetMac.empty())
 	{
@@ -415,7 +412,7 @@ taf::MAC_INFO TC_Device::getFristEthernetNetCard()
 	MasterHardDiskSerial mhds;
 	mhds.getFristEthernetMac(strFristEthernetMac);
 	return strFristEthernetMac;
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 	auto net_cards = getAllPhysicalNetCard();
 	if (!net_cards.empty())
 	{
@@ -438,7 +435,7 @@ std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllPhysicalNetCard(
 		return net_card;
 	}
 
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	/*	in_vecMac.clear();
 		static std::vector<MAC_INFO> s_vecMac;
 		if (s_vecMac.size() > 0)
@@ -449,7 +446,7 @@ std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllPhysicalNetCard(
 		MasterHardDiskSerial mhds;
 		mhds.getAllPhysicalMAC(s_vecMac);
 		in_vecMac.assign(s_vecMac.begin(), s_vecMac.end());*/
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 
 	char buf_ps[128];
 	std::string cmd = "ls /sys/class/net/ |grep -v \"`ls /sys/devices/virtual/net/`\"";
@@ -492,7 +489,7 @@ std::unordered_map<std::string, taf::MAC_INFO> TC_Device::getAllPhysicalNetCard(
 
 std::tuple<std::string, std::string> TC_Device::getHD()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	static std::string strSystemSerialNo;
 	if (!strSystemSerialNo.empty())
 	{
@@ -501,7 +498,7 @@ std::tuple<std::string, std::string> TC_Device::getHD()
 	MasterHardDiskSerial mhds;
 	mhds.getSerialNo(strSystemSerialNo);
 	return strSystemSerialNo;
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 	char buf_ps[128];
 	std::string cmd = "df -Tlh |sed -n \"2p\" |awk -F ' ' '{printf(\"%s,%s,%s\",$1,$2,$3)}'";
 	FILE* ptr = NULL;
@@ -532,6 +529,7 @@ std::tuple<std::string, std::string> TC_Device::getHD()
 	}
 
 	ioctl(fd, HDIO_GET_IDENTITY, &id);
+	printf("Model = %s\nFwRev = %s\nSerialNo = %s\n",id.model,id.fw_rev,id.serial_no);
 	std::string model;
 	std::string serial_id;
 	//长度是固定的不要随意修改
@@ -563,10 +561,10 @@ std::tuple<std::string, std::string> TC_Device::getHD()
 
 std::string TC_Device::getPI()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	//TODO
 	throw std::logic_error("not complete");
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 	char buf_ps[128];
 	std::string cmd = "df -Tlh |sed -n \"2p\" |awk -F ' ' '{printf(\"%s,%s,%s\",$1,$2,$3)}'";
 	FILE* ptr = NULL;
@@ -594,10 +592,10 @@ std::string TC_Device::getCPU()
 	{
 		return cpuid;
 	}
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WIDNOWS
 	get_cpuId(cpuid);
 	return cpuid;
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 	get_cpuId(cpuid);
 	return cpuid;
 #else
@@ -605,8 +603,7 @@ std::string TC_Device::getCPU()
 #endif
 }
 
-#if !defined(_WIN64) && !defined(_WIN32)
-
+#if (TARGET_PLATFORM_LINUX && TARGET_PLATFORM_IOS)
 std::tuple<std::string, std::string> TC_Device::getUnixOsInfo()
 {
 	char buf_ps[128];
@@ -632,13 +629,12 @@ std::tuple<std::string, std::string> TC_Device::getUnixOsInfo()
 
 	return std::make_tuple(osname, osversion);
 }
-
 #endif
 
 std::string TC_Device::getPCN()
 {
 	std::string osname = "";
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	SYSTEM_INFO info;        //用SYSTEM_INFO结构判断64位AMD处理器
 	GetSystemInfo(&info);    //调用getSystemInfo函数填充结构
 	OSVERSIONINFOEX os;
@@ -747,7 +743,7 @@ std::string TC_Device::getPCN()
 
 std::string TC_Device::getOSV()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	static std::string str_osv;
 	if (!str_osv.empty())
 	{
@@ -767,7 +763,7 @@ std::string TC_Device::getOSV()
 
 std::string TC_Device::getIMEI()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	static std::string strSystemSerialNo;
 	if (!strSystemSerialNo.empty())
 	{
@@ -784,7 +780,7 @@ std::string TC_Device::getIMEI()
 
 std::string TC_Device::getVOL()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	static std::string str_vol;
 	if (!str_vol.empty())
 	{
@@ -804,7 +800,7 @@ std::string TC_Device::getVOL()
 // https://docs.microsoft.com/en-us/windows/win32/wmisdk/example--getting-wmi-data-from-the-local-computer
 int TC_Device::WmiQuery(const std::string& key, std::string& val)
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	HRESULT hres;
 
 	// Step 1: --------------------------------------------------
@@ -991,11 +987,11 @@ int TC_Device::WmiQuery(const std::string& key, std::string& val)
 
 std::string TC_Device::getVendor()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	std::string manufacturer;
 	TC_Device::WmiQuery("Manufacturer", manufacturer);
 	return manufacturer;
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 	char buf_ps[128];
 	std::string cmd = "cat /sys/class/dmi/id/board_vendor";
 	FILE* ptr = NULL;
@@ -1017,11 +1013,11 @@ std::string TC_Device::getVendor()
 
 std::string TC_Device::getModel()
 {
-#if defined(_WIN64) || defined(_WIN32)
+#if TARGET_PLATFORM_WINDOWS
 	std::string model;
 	TC_Device::WmiQuery("Model", model);
 	return manufacturer;
-#elif defined(__linux)
+#elif TARGET_PLATFORM_LINUX
 	char buf_ps[128];
 	std::string cmd = "cat /sys/class/dmi/id/board_name";
 	FILE* ptr = NULL;
