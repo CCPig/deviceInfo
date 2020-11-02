@@ -603,7 +603,7 @@ std::string TC_Device::getCPU()
 #endif
 }
 
-#if (TARGET_PLATFORM_LINUX && TARGET_PLATFORM_IOS)
+#if (TARGET_PLATFORM_LINUX || TARGET_PLATFORM_IOS)
 std::tuple<std::string, std::string> TC_Device::getUnixOsInfo()
 {
 	char buf_ps[128];
