@@ -499,29 +499,33 @@ std::tuple<std::string, std::string> TC_Device::getHD()
 	mhds.getSerialNo(strSystemSerialNo);
 	return strSystemSerialNo;
 #elif TARGET_PLATFORM_LINUX
+	auto pi = taf::TC_Common::sepstr<string>(getPI(), ",");
+	std::string name = pi.front();
+	std::vector<std::string> result;
+
 	char buf_ps[128];
-	std::string cmd = "df -Tlh |sed -n \"2p\" |awk -F ' ' '{printf(\"%s,%s,%s\",$1,$2,$3)}'";
+	std::string cmd = "/sbin/udevadm info --query=property --name=" + name + "|grep -E \"ID_SERIAL_SHORT=|ID_MODEL=\"" ;
 	FILE* ptr = NULL;
 	if ((ptr = popen(cmd.c_str(), "r")) != NULL)
 	{
-		if (fgets(buf_ps, 128, ptr) == NULL)
+		while (fgets(buf_ps, 128, ptr) != NULL)
 		{
-			std::logic_error("get Unix OS PI!!!");
+			std::string info(buf_ps);
+			auto tmp = taf::TC_Common::sepstr<std::string>(info.substr(0, info.length() - 1), "=");
+			result.push_back(tmp[1]);
+			memset(buf_ps,0,sizeof(buf_ps));
+		}
+		if(result.size() != 2)
+		{
+			throw std::logic_error("get HD failed");
 		}
 		pclose(ptr);
 		ptr = NULL;
 	}
-	std::string info(buf_ps);
-	auto PI = taf::TC_Common::sepstr<string>(info, ",");
+	return std::make_tuple(result[0], result[1]);
 
-	static int open_flags = O_RDONLY | O_NONBLOCK;
-	static struct hd_driveid id;
 
-	if (PI.empty())
-	{
-		throw std::logic_error("get HD failed");
-	}
-
+/*
 	int fd = open(PI.front().c_str(), open_flags);
 	if (fd < 0)
 	{
@@ -551,9 +555,9 @@ std::tuple<std::string, std::string> TC_Device::getHD()
 			continue;
 		}
 		serial_id += a;
-	}
+	}*/
 
-	return std::make_tuple(model, serial_id);
+//	return std::make_tuple(model, serial_id);
 #else
 	//	throw std::logic_error("not complete");
 #endif
