@@ -54,14 +54,14 @@ int main(int argc, char** argv)
 		cout << "all_net_card:" << endl;
 		for (auto& item : all_mac)
 		{
-			cout << item.first << " " << item.second.str_ip_ << " " << item.second.str_mac_ << endl;
+			cout << item.first << "| " << item.second.str_ip_ << "| " << item.second.str_mac_ << endl;
 		}
 
 		auto all_physical_mac = TC_Device::getAllPhysicalNetCard();
 		cout << "all_physical_net_card:" << endl;
 		for (auto& item: all_physical_mac)
 		{
-			cout << item.first << " " << item.second.str_ip_ << " " << item.second.str_mac_ << endl;
+			cout << item.first << "| " << item.second.str_ip_ << "| " << item.second.str_mac_ << endl;
 		}
 
 //		std::cout << "all_mac:" << taf::TC_Common::tostr(all_mac_str) << std::endl;

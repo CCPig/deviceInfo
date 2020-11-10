@@ -28,4 +28,4 @@ if(WIN32)
 endif(WIN32)
 
 
-add_executable(test dev_info_get_unittest.cpp tc_device.cpp tc_device.h HardDriveSerialNumer.h HardDriveSerialNumer.cpp)
+add_executable(test dev_info_get_unittest.cpp tc_device.cpp tc_device.h)
